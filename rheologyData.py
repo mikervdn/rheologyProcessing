@@ -25,7 +25,6 @@ from matplotlib import pyplot
 from scipy.optimize import curve_fit
 
 
-
 def rheologyDataParserOld( fileName, outputDirectory ):    
     """
     This function takes the data from the old format of the Anton-Parr rheometer and parses it into a series of text files that has
@@ -160,7 +159,7 @@ def dataSetPackager(topDir):
             #The current data set should be ordered from lowest controlled shear rate to highest shear rate so we check and then flip if need be.
             if currentDataSet[0,4,0] > currentDataSet[-1,4,0]:
                 currentDataSet = np.flip(currentDataSet,axis=0)
-                        
+            print(dirpath+os.sep+filename)
             if dataSetHolder.any():
                 dataSetHolder = np.append(dataSetHolder , currentDataSet , axis=2 )
             else:
@@ -177,16 +176,30 @@ def dataSetPackager(topDir):
             
             
     
-def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False):
+def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=False,maxViscosityList=False,suspendingViscosity=False):
     
     
     #Get a list of all the subdirectories
     listOfSubDirs = next(os.walk(topDir))[1]
+    listOfSubDirs = [float(i) for i in listOfSubDirs]
+    listOfSubDirs.sort()
+    listOfSubDirs = [str(i) for i in listOfSubDirs]
+    listOfSubDirs = listOfSubDirs[::-1]
     
+    if maxMinPtsOn == True:
+        if (len(minViscosityList)!=len(listOfSubDirs)) or (len(maxViscosityList)!=len(listOfSubDirs)):
+            return print("The length of minViscosityList and the length of maxViscosityList must be the same as the number of packing fractions in topDir.")
+        
+
+
     if maxMinPtsOn==True:
         phiVsMaxViscosity = np.array([])
         phiVsMinViscosity = np.array([])
+        
+        
+    ax = pyplot.subplot(111)
     
+    counter = 0
     for packingFraction in listOfSubDirs:
         
         
@@ -196,54 +209,80 @@ def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False):
         #We want to plot the viscosity both as a function of shear stress and shear rate.
         
         #First the plot as a function of shear stress.
-        pyplot.errorbar(loadInAveragedData[:,4],loadInAveragedData[:,2],xerr= loadInErrordata[:,4],yerr=loadInErrordata[:,2],label=packingFraction,marker='o')
+        ax.errorbar(loadInAveragedData[:,4],loadInAveragedData[:,2],xerr= loadInErrordata[:,4],yerr=loadInErrordata[:,2],label=packingFraction,marker='o')
         #Next plot the viscosity as a function of shear rate,
 
         if maxMinPtsOn==True:
-
-            pyplot.plot(max(loadInAveragedData[:,4]),max(loadInAveragedData[:,2]),marker='o',markersize=12,color='red' )
-            pyplot.plot(min(loadInAveragedData[:,4]),min(loadInAveragedData[:,2]),marker='o',markersize=12,color='red' )
+            sortedViscosities = np.sort(loadInAveragedData[:,2])
             
+            minViscosity = sortedViscosities[minViscosityList[counter]]
+            maxViscosity = sortedViscosities[-(maxViscosityList[counter]+1)]
+ 
+            shearStressForMinViscosity = loadInAveragedData[np.where(loadInAveragedData[:,2]==minViscosity)[0][0],4]
+            shearStressForMaxViscosity = loadInAveragedData[np.where(loadInAveragedData[:,2]==maxViscosity)[0][0],4]
+            
+            ax.plot(shearStressForMinViscosity,minViscosity,marker='o',markersize=12,color='blue',mfc='none' )
+            ax.plot(shearStressForMaxViscosity,maxViscosity,marker='o',markersize=12,color='red',mfc='none' )
+            counter = counter +1
             
             if phiVsMinViscosity.size == 0:
                 
-                phiVsMinViscosity = np.array([float(packingFraction) ,min(loadInAveragedData[:,2])])
-                phiVsMaxViscosity = np.array([float(packingFraction) ,max(loadInAveragedData[:,2])])   
+                phiVsMinViscosity = np.array([float(packingFraction) ,minViscosity])
+                phiVsMaxViscosity = np.array([float(packingFraction) ,maxViscosity])   
             else:
                 
-                phiVsMinViscosity = np.vstack( (phiVsMinViscosity,np.array([float(packingFraction) ,min(loadInAveragedData[:,1])])))
-                phiVsMaxViscosity = np.vstack( (phiVsMaxViscosity,np.array([float(packingFraction) ,max(loadInAveragedData[:,1])])) )
-                
-    
-    
-    pyplot.yscale('log')
-    pyplot.xscale('log')
-    pyplot.xlabel("Shear Rate [1/s]")
-    pyplot.ylabel("Viscosity [Pa X s]")
-    pyplot.grid(True)
-    pyplot.legend()
-    
-    
+                phiVsMinViscosity = np.vstack( (phiVsMinViscosity,np.array([float(packingFraction) ,minViscosity])))
+                phiVsMaxViscosity = np.vstack( (phiVsMaxViscosity,np.array([float(packingFraction) ,maxViscosity])) )
+
+
     if maxMinPtsOn == True:
         #Sort the viscosities based no the entry in the first column.
         phiVsMinViscosity = phiVsMinViscosity[phiVsMinViscosity[:,0].argsort()]
         phiVsMaxViscosity = phiVsMaxViscosity[phiVsMaxViscosity[:,0].argsort()]
-        return (phiVsMinViscosity,phiVsMaxViscosity)
+        
+        (phiM,alphaM) = fitAlphaPhiJ(phiVsMaxViscosity[:,1], phiVsMaxViscosity[:,0]/100, suspendingViscosity)
+        (phi0,alpha0) = fitAlphaPhiJ(phiVsMinViscosity[:,1], phiVsMinViscosity[:,0]/100, suspendingViscosity)
+        textstr = '$\phi_0=%.2f$\n$\alpha_0=%.2f$\n$\phi_m=%.2f$\n$\alpha_m=%.2f$' % (phi0, alpha0, phiM,alphaM)
+        
+             
+    
+    
+    pyplot.yscale('log')
+    pyplot.xscale('log')
+    pyplot.xlabel("Shear Stress [Pa]")
+    pyplot.ylabel("Viscosity [Pa s]")
+    pyplot.title("Flow Curves for Pure Cornstarch Suspensions")
+    pyplot.grid(True)
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    if maxMinPtsOn == True:
+        ax.text(2, 1, "$\phi_0$ = " + str(round(phi0,2)))
+        ax.text(1600, 4, "$alpha_0$ = " + str(round(alpha0,2)))
+        #ax.text(1600, 0, "$\phi_M$ = " + str(round(phiM,2)))
+        #ax.text(1600, 0, "$alpha_M$ = " + str(round(alphaM,2)))
+    # Put a legend to the right of the current axis
+    
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    
+        
+    if maxMinPtsOn == True:
+        return (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0)
+    
         
 
 def fitAlphaPhiJ(viscosityValues, packingFractionValues, suspendingViscosity):
     
     def divergingViscosityFunc(x,phiJ, alpha):
         
-        return suspendingViscosity * ( 1 - x / phiJ )**( -alpha )
+        return suspendingViscosity * ( 1 - (x/phiJ) )**( -alpha )
     
     
     (popt, pcov) = curve_fit(divergingViscosityFunc, packingFractionValues, viscosityValues)
     
-    #alpha = popt[0]
-    #phiJ = popt[1]
+    alpha = popt[1]
+    phiJ = popt[0]
     
-    return popt
+    return (phiJ,alpha)
 
     
     
