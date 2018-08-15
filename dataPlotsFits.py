@@ -11,7 +11,7 @@ import os
 from matplotlib import pyplot
 from scipy.optimize import curve_fit
 
-def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=False,maxViscosityList=False,suspendingViscosity=False):
+def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=False,maxViscosityList=False,suspendingViscosity=False,solvent="normal"):
     
     
     #Get a list of all the subdirectories
@@ -99,7 +99,11 @@ def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=Fal
     pyplot.xscale('log')
     pyplot.xlabel("Shear Stress [Pa]")
     pyplot.ylabel("Viscosity [Pa s]")
-    pyplot.title("Flow Curves for GdCl Cornstarch Suspensions")
+    if solvent == "GdCl":
+        pyplot.title("Flow Curves for GdCl Cornstarch Suspensions")
+    if solvent =="normal":
+        pyplot.title("Flow Curves for Normal Cornstarch Suspensions")
+        
     pyplot.grid(True)
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
@@ -254,3 +258,51 @@ def logarithmicPlotterAllLines(phiVsMinViscosityG,phiVsMinViscosityC,phiVsMaxVis
     pyplot.legend()
     pyplot.xlabel(r"$\log(1-\frac{\phi}{\phi_J})$")
     pyplot.ylabel(r"$\log(\eta)$")
+
+
+
+def sideBySideCurvePlot(topDir1,topDir2,outputDir):
+    
+    #get list of all of the subdirectories in topDir1 and topDir2
+    dirsIn1 = next(os.walk(topDir1))[1]
+    dirsIn2 = next(os.walk(topDir2))[1]
+    
+    #They need to be sorted so we have to convert them from strings to floats and then back
+    dirsIn1 = np.sort([float(i) for i in dirsIn1])
+    dirsIn2 = np.sort([float(i) for i in dirsIn2])
+    #Back to strings!
+    dirsIn1 = [str(i) for i in dirsIn1]
+    dirsIn2 = [str(i) for i in dirsIn2]
+    
+    
+    
+    for i in range(0,len(dirsIn1)):
+        
+        dir1Data = np.load(os.path.join(topDir1,dirsIn1[i], r"averagedData.npy"))
+        dir1Errors = np.load(os.path.join(topDir1,dirsIn1[i], r"errorsData.npy"))
+        
+        dir2Data = np.load(os.path.join(topDir2,dirsIn2[i], r"averagedData.npy"))
+        dir2Errors = np.load(os.path.join(topDir2,dirsIn2[i], r"errorsData.npy"))
+        
+        
+        
+        pyplot.errorbar(dir1Data[:,4],dir1Data[:,2],xerr= dir1Errors[:,4],yerr=dir1Errors[:,2],label=dirsIn1[i],marker='o')
+        pyplot.errorbar(dir2Data[:,4],dir2Data[:,2],xerr= dir2Errors[:,4],yerr=dir2Errors[:,2],label=dirsIn2[i],marker='o')
+        
+        
+        figName = str(round(float(dirsIn1[i])))
+        pyplot.yscale('log')
+        pyplot.xscale('log')
+        pyplot.xlabel("Shear Stress [Pa]")
+        pyplot.ylabel("Viscosity [Pa s]")
+        pyplot.legend(("Pure Cornstarch $\phi$ = "+dirsIn1[i],"Cornstarch/GdCl $\phi$ = "+dirsIn2[i]))
+        
+        
+        
+        pyplot.savefig(os.path.join(outputDir,figName))
+        
+        
+        pyplot.clf()
+        
+        
+        
