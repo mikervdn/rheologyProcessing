@@ -41,6 +41,9 @@ def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=Fal
         loadInAveragedData = np.load(os.path.join(topDir, packingFraction , r"averagedData.npy" ))
         loadInErrordata = np.load(os.path.join(topDir, packingFraction , r"errorsData.npy" ))
         
+        #Rescale viscosities to be dimensionless
+        #loadInAveragedData[:,2] = (1/suspendingViscosity)*loadInAveragedData[:,2]
+        
         #We want to plot the viscosity both as a function of shear stress and shear rate.
         
         #First the plot as a function of shear stress.
@@ -261,7 +264,7 @@ def logarithmicPlotterAllLines(phiVsMinViscosityG,phiVsMinViscosityC,phiVsMaxVis
 
 
 
-def sideBySideCurvePlot(topDir1,topDir2,outputDir):
+def sideBySideCurvePlot(topDir1,topDir2,outputDir,baseViscosity1,baseViscosity2,allPlots=False,evenCurves="none"):
     
     #get list of all of the subdirectories in topDir1 and topDir2
     dirsIn1 = next(os.walk(topDir1))[1]
@@ -274,9 +277,32 @@ def sideBySideCurvePlot(topDir1,topDir2,outputDir):
     dirsIn1 = [str(i) for i in dirsIn1]
     dirsIn2 = [str(i) for i in dirsIn2]
     
-    
+    pyplot.figure(figsize=(14.0, 5.0))
+
+
     
     for i in range(0,len(dirsIn1)):
+        
+        if allPlots == True:
+            if evenCurves == "even":
+                if i%2!=0:
+                    continue
+            if evenCurves == "odd":
+                if i%2==0:
+                    continue
+                
+
+            
+        
+        #if i%2==0:
+        #   continue
+    
+        
+        
+
+           
+        
+        
         
         dir1Data = np.load(os.path.join(topDir1,dirsIn1[i], r"averagedData.npy"))
         dir1Errors = np.load(os.path.join(topDir1,dirsIn1[i], r"errorsData.npy"))
@@ -286,23 +312,28 @@ def sideBySideCurvePlot(topDir1,topDir2,outputDir):
         
         
         
-        pyplot.errorbar(dir1Data[:,4],dir1Data[:,2],xerr= dir1Errors[:,4],yerr=dir1Errors[:,2],label=dirsIn1[i],marker='o')
-        pyplot.errorbar(dir2Data[:,4],dir2Data[:,2],xerr= dir2Errors[:,4],yerr=dir2Errors[:,2],label=dirsIn2[i],marker='o')
+        pyplot.errorbar(dir1Data[:,4],dir1Data[:,2],xerr= dir1Errors[:,4],yerr=dir1Errors[:,2],label=dirsIn1[i]+"C",marker='o')
+        pyplot.errorbar(dir2Data[:,4],dir2Data[:,2],xerr= dir2Errors[:,4],yerr=dir2Errors[:,2],label=dirsIn2[i]+"GdCl",marker='1')
         
         
         figName = str(round(float(dirsIn1[i])))
         pyplot.yscale('log')
         pyplot.xscale('log')
-        pyplot.xlabel("Shear Stress [Pa]")
-        pyplot.ylabel("Viscosity [Pa s]")
-        pyplot.legend(("Pure Cornstarch $\phi$ = "+dirsIn1[i],"Cornstarch/GdCl $\phi$ = "+dirsIn2[i]))
+        pyplot.xlabel(r"Shear Stress [Pa]")
+        pyplot.ylabel(r"Viscosity $\eta$ [Pa s]")
+        pyplot.legend()
         
         
+        if allPlots == False:
+            pyplot.savefig(os.path.join(outputDir,figName))
+            pyplot.clf()
+        else:
+            pyplot.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+                    
         
-        pyplot.savefig(os.path.join(outputDir,figName))
+    if allPlots == True:
+        pyplot.savefig(os.path.join(outputDir,"all"+evenCurves+"plots"))
         
-        
-        pyplot.clf()
         
         
         

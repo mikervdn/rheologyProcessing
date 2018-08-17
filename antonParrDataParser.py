@@ -29,8 +29,6 @@ All of the data
 
 import numpy as np 
 import os
-from matplotlib import pyplot
-from scipy.optimize import curve_fit
 
 
 def rheologyDataParserOld( fileName, outputDirectory ):    
@@ -181,5 +179,4 @@ def dataSetPackager(topDir):
     np.save(os.path.join(topDir, r"errorsData"), standardDeviationData )
 
     return (averagedData,standardDeviationData)
-            
             
