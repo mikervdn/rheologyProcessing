@@ -9,7 +9,7 @@ Created on Wed Aug 15 09:17:41 2018
 import numpy as np 
 import os
 from matplotlib import pyplot
-from scipy.optimize import curve_fit
+import fittingFunctions
 
 def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=False,maxViscosityList=False,suspendingViscosity=False,solvent="normal",rescaleViscosity=False):
     
@@ -93,12 +93,12 @@ def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=Fal
     if suspendingViscosity != False:
         if rescaleViscosity ==False:
             
-            (phiM,alphaM,phiJErrorM,alphaErrorM) = fitAlphaPhiJNoRescale(phiVsMaxViscosity[:,1], phiVsMaxViscosity[:,0], suspendingViscosity)
-            (phi0,alpha0,phiJError0,alphaError0) = fitAlphaPhiJNoRescale(phiVsMinViscosity[:,1], phiVsMinViscosity[:,0], suspendingViscosity)
+            (phiM,alphaM,phiJErrorM,alphaErrorM) = fittingFunctions.fitAlphaPhiJNoRescale(phiVsMaxViscosity[:,1], phiVsMaxViscosity[:,0], suspendingViscosity)
+            (phi0,alpha0,phiJError0,alphaError0) = fittingFunctions.fitAlphaPhiJNoRescale(phiVsMinViscosity[:,1], phiVsMinViscosity[:,0], suspendingViscosity)
             #textstr = '$\phi_0=%.2f$\n$\alpha_0=%.2f$\n$\phi_m=%.2f$\n$\alpha_m=%.2f$' % (phi0, alpha0, phiM,alphaM)
         else:
-            (phiM,alphaM,phiJErrorM,alphaErrorM) = fitAlphaPhiJRescaled(phiVsMaxViscosity[:,1], phiVsMaxViscosity[:,0])
-            (phi0,alpha0,phiJError0,alphaError0) = fitAlphaPhiJRescaled(phiVsMinViscosity[:,1], phiVsMinViscosity[:,0])
+            (phiM,alphaM,phiJErrorM,alphaErrorM) = fittingFunctions.fitAlphaPhiJRescaled(phiVsMaxViscosity[:,1], phiVsMaxViscosity[:,0])
+            (phi0,alpha0,phiJError0,alphaError0) = fittingFunctions.fitAlphaPhiJRescaled(phiVsMinViscosity[:,1], phiVsMinViscosity[:,0])
             
              
     
@@ -193,42 +193,6 @@ def shearRateVsViscosityPlotter(topDir,suspendingViscosity=False,solvent="normal
 
         
 
-def fitAlphaPhiJNoRescale(viscosityValues, packingFractionValues, suspendingViscosity):
-    
-    def divergingViscosityFunc(x,phiJ, alpha):
-        
-        return suspendingViscosity * ( 1 - (x/phiJ) )**( -alpha )
-    
-    
-    (popt, pcov) = curve_fit(divergingViscosityFunc, packingFractionValues, viscosityValues,bounds=(0, [1, 100]))
-    
-    alpha = popt[1]
-    phiJ = popt[0]
-    errors = np.sqrt(np.diag(pcov))
-    alphaError = errors[1]
-    phiJError = errors[0]
-    
-    
-    return (phiJ,alpha,phiJError,alphaError)
-
-def fitAlphaPhiJRescaled(viscosityValues, packingFractionValues):
-    
-    def divergingViscosityFunc(x,phiJ, alpha):
-        
-        return  ( 1 - (x/phiJ) )**( -alpha )
-    
-    
-    (popt, pcov) = curve_fit(divergingViscosityFunc, packingFractionValues, viscosityValues,bounds=(0, [1, 100]))
-    
-    alpha = popt[1]
-    phiJ = popt[0]
-    errors = np.sqrt(np.diag(pcov))
-    alphaError = errors[1]
-    phiJError = errors[0]
-    
-    
-    return (phiJ,alpha,phiJError,alphaError)
-
 def viscosityDivergencePlot(lowViscosityValues,lowViscosityValuesGdCl, packingFractionValuesGdCl,packingFractionValuesCornstarch, suspendingViscosityCornstarch,suspendingViscosityGdCl):
     
     
@@ -238,8 +202,8 @@ def viscosityDivergencePlot(lowViscosityValues,lowViscosityValuesGdCl, packingFr
     def divergingViscosityFuncNormal(x,phiJ, alpha):
         return suspendingViscosityCornstarch * ( 1 - (x/phiJ) )**( -alpha )
     
-    (phiJGdCl,alphaGdCl,phiJErrorG,alphaErrorG) = fitAlphaPhiJRescaled(lowViscosityValuesGdCl, packingFractionValuesGdCl)
-    (phiJ0,alpha0,phiJError0,alphaError0) = fitAlphaPhiJRescaled(lowViscosityValues, packingFractionValuesCornstarch)
+    (phiJGdCl,alphaGdCl,phiJErrorG,alphaErrorG) = fittingFunctions.fitAlphaPhiJRescaled(lowViscosityValuesGdCl, packingFractionValuesGdCl)
+    (phiJ0,alpha0,phiJError0,alphaError0) = fittingFunctions.fitAlphaPhiJRescaled(lowViscosityValues, packingFractionValuesCornstarch)
     
 #    phiJLineYValues = np.linspace(0,max(highViscosityValues),50)
 #    phiJMLineXValues = phiJGdCl*np.ones((50))
@@ -365,14 +329,7 @@ def sideBySideCurvePlot(topDir1,topDir2,outputDir,baseViscosity1,baseViscosity2,
         
         #if i%2==0:
         #   continue
-    
-        
-        
 
-           
-        
-        
-        
         dir1Data = np.load(os.path.join(topDir1,dirsIn1[i], r"averagedData.npy"))
         dir1Errors = np.load(os.path.join(topDir1,dirsIn1[i], r"errorsData.npy"))
         
@@ -415,20 +372,78 @@ def sideBySideCurvePlot(topDir1,topDir2,outputDir,baseViscosity1,baseViscosity2,
         pyplot.savefig(os.path.join(outputDir,"all"+evenCurves+"plots"))
         
         
-        
+
+def shearJammingPhaseDiagram(phi0,phiM,tauStar,alpha):
+    '''
+    This generates a plot of the shear jamming phase diagram using the Wyart-Cates 
+    model.  This model is outlined in the paper found here:
+    
+    https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.112.098302
+    
+    This model gives the shear rate as a function of the density of your suspension
+    and the as a function of the shear stress:
+        gammaDot = (1/eta_0)*tau*(1+phi/(phiM+(phi0-phiM)*e^(-tau/tauStar)))^alpha
+        where gammaDot is the shear rate, eta_0 is the viscosity of the suspending solvent
+        tau is the shear stress, phi is the densty, phi0 is the frictionless jamming
+        density, phiM is the frictional jamming density, and alpha is a free parameter in the
+        model.
         
     
-def tauStarFit(packingFractionValues,stressValues,shearRateValues,phi0,phiM,alpha,suspendingViscosity):
+    '''
     
-    #X is a tuple that is X = (packingFractionValues,stressValues)
-    def stressFunc(X,tauStar):
-        packingFraction,shearStress,shearRate = X
-        
-        return suspendingViscosity*shearRate*(1- packingFraction/(phiM+(phi0-phiM)*np.exp(shearStress/tauStar)))**alpha
+    #This is the y-values, or the stresses used for each curve
+    stressValues = np.linspace(10**-5,10**5,100000)
     
-    (popt, pcov) = curve_fit(stressFunc, (packingFractionValues,stressValues,shearRateValues), stressValues,bounds=(0, [10000]))
     
+    #Find the DST line as a function of the stressValues defined above.  This function
+    #returns packing fractions as a function of shear stress
+    def DSTLine(tau):
+        return (np.exp(-tau/tauStar)*((phi0-phiM)+phiM*np.exp(tau/tauStar))**2)/(phiM*(np.exp(tau/tauStar)-1-alpha*tau/tauStar)+phi0*(1+alpha*tau/tauStar))
+    
+    #Find the Shear Jamming line as a function of the stressValues defined above.  
+    #This function returns packing fractions as a function of shear stress
+    def shearJammingLine(tau):
+        return phiM+(phi0-phiM)*np.exp(-tau/tauStar)
+    
+    #This is the x-values, or the densities that define the DST line and SJ line
+    phiValuesDST = DSTLine(stressValues)
+    phiValuesSJ = shearJammingLine(stressValues)
+    
+    #This generates the vertical line that defines frictionless jamming
+    phiValuesJamming = phi0*np.ones(100000)
+    
+    #This is another vertical line that is not seen in the plot but acts as boundary for the fill_between function 
+    phiValuesBeyondJamming = phiValuesJamming+0.06
+    
+    #Plot all four curves, the DST curve, the SJ curve, and the two vertical lines.
+    pyplot.semilogy(phiValuesDST,stressValues,phiValuesSJ,stressValues,phiValuesJamming,stressValues,phiValuesBeyondJamming,stressValues,label = ['DST', 'SJ','J'],color="black")
+    
+    #This shades the region between DST and SJ green (This is the DST region)
+    pyplot.fill_betweenx(stressValues,phiValuesDST,phiValuesSJ,where=phiValuesDST <= phiValuesSJ, facecolor='lightblue', interpolate=True)
+    #This shades the region between SJ and frictionless jamming blue (This is the SJ region)
+    pyplot.fill_betweenx(stressValues,phiValuesSJ,phiValuesJamming,where=phiValuesSJ <= phiValuesJamming, facecolor='lightgreen', interpolate=True)
+    #This shades the region between frictionless jamming and vertical line out of sight grey (This is the frictionlesss jamming region)
+    pyplot.fill_betweenx(stressValues,phiValuesJamming,phiValuesBeyondJamming,where=phiValuesJamming <= phiValuesBeyondJamming, facecolor='beige', interpolate=True)
         
-        
+    
+    pyplot.ylim(10**-1, 10000)
+    pyplot.xlim(phiM-.1,phi0+.05)
+    
+    pyplot.xlabel(r"Packing Fraction $\phi$")
+    pyplot.ylabel(r"Shear Stress $ \tau $ [Pa]")
+    pyplot.title("Shear Jamming Phase Diagram")
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
         
         
