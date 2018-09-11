@@ -42,7 +42,6 @@ def fitAlphaPhiJRescaled(viscosityValues, packingFractionValues):
     alphaError = errors[1]
     phiJError = errors[0]
     
-    
     return (phiJ,alpha,phiJError,alphaError)
 
 def tauStarFit(packingFractionValues,stressValues,shearRateValues,phi0,phiM,alpha,suspendingViscosity):
@@ -51,7 +50,24 @@ def tauStarFit(packingFractionValues,stressValues,shearRateValues,phi0,phiM,alph
     def strainRateFunc(X,tauStar):
         packingFraction,shearStress = X
         
-        return (1/suspendingViscosity)*shearStress*(1- packingFraction/(phiM+(phi0-phiM)*np.exp(shearStress/tauStar)))**alpha
+        return (1/suspendingViscosity)*shearStress*(1- packingFraction/(phiM+(phi0-phiM)*np.exp(-shearStress/tauStar)))**alpha
     
-    (popt, pcov) = curve_fit(strainRateFunc, (packingFractionValues,stressValues), stressValues,bounds=(0, [10000]))
+    (popt, pcov) = curve_fit(strainRateFunc, (packingFractionValues,stressValues), shearRateValues,bounds=(0, [10000]))
+    
+    return popt,pcov
+    
+
+def allParameterFit(packingFractionValues,stressValues,shearRateValues,suspendingViscosity):
+    
+    
+    #X is a tuple that is X = (packingFractionValues,stressValues)
+    def strainRateFunc(X,tauStar,phiM,phi0,alpha):
+        packingFraction,shearStress = X
+        
+        return (1/suspendingViscosity)*shearStress*(1- packingFraction/(phiM+(phi0-phiM)*np.exp(-shearStress/tauStar)))**alpha
+    
+    (popt, pcov) = curve_fit(strainRateFunc, (packingFractionValues,stressValues), shearRateValues,bounds=(0, [100,.8,.8,5]))
+    
+    return popt,np.sqrt(np.diag(pcov))
+    
     
