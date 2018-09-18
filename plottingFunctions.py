@@ -34,7 +34,6 @@ def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=Fal
         
     ax = pyplot.subplot(111)
     
-    counter = 0
     for packingFraction in listOfSubDirs:
         
         if rescaleViscosity == False:
@@ -52,81 +51,63 @@ def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=Fal
                 
         #First the plot as a function of shear stress.
         if noErrors == False:
-            ax.errorbar(loadInAveragedData[:,4],loadInAveragedData[:,2],xerr= loadInErrordata[:,4],yerr=loadInErrordata[:,2],label=packingFraction,marker='o')
+            ax.errorbar(loadInAveragedData[:,4],loadInAveragedData[:,2],xerr= loadInErrordata[:,4],yerr=loadInErrordata[:,2],label=packingFraction,marker='o',markersize=5)
         else:
             ax.plot(loadInAveragedData[:,4],loadInAveragedData[:,2],label=packingFraction,marker='o')
         #Next plot the viscosity as a function of shear rate,
 
-        if maxMinPtsOn==True:
-            sortedViscosities = np.sort(loadInAveragedData[:,2])
-            
-            if minViscosityList[counter] == -1:
-                minViscosity = np.nan
-            else:
-                if tauMin == False:
-                    minViscosity = sortedViscosities[minViscosityList[counter]]
-                else:
-                    tauMinOnset = find_nearest(loadInAveragedData[:,4],tauMin)
-                    minViscosity = loadInAveragedData[np.where(loadInAveragedData[:,4]==tauMinOnset),2][0]
-                
-                
-            if maxViscosityList[counter] == -1:
-                maxViscosity = np.nan
-            else:
-                maxViscosity = sortedViscosities[-(maxViscosityList[counter]+1)]
-                    
 
-            if minViscosityList[counter] != -1:
-                if tauMin == False:
+
+
+    #THIS IS THE ONLY THING THAT SHOULD REMAIN OF maxMinPtsOn
+    if maxMinPtsOn==True:
+        if tauMin==False:
+            if (suspendingViscosity==False) and (rescaleViscosity!=False):
+                (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0,phiJError0,alphaError0,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,False,True,False)
+            else:
+                (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0,phiJError0,alphaError0,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingViscosity,False,False)
+        else:
+            if (suspendingViscosity==False) and (rescaleViscosity!=False):
+                (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0,phiJError0,alphaError0,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,False,True,tauMin)
+            else:
+                (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0,phiJError0,alphaError0,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingViscosity,False,tauMin)
+                
+
+        for packingFraction in listOfSubDirs:
+            
+            if rescaleViscosity == False:
+                loadInAveragedData = np.load(os.path.join(topDir, packingFraction , r"averagedData.npy" ))
+            else:
+                loadInAveragedData = np.load(os.path.join(topDir, packingFraction , r"averagedDataVR.npy" ))
+                
+
+            if float(packingFraction)/100 in phiVsMinViscosity:
+                (x,y) = np.where(phiVsMinViscosity==float(packingFraction)/100)
+                minViscosity = phiVsMinViscosity[x,1]
+     
+                if tauMin==False:
                     shearStressForMinViscosity = loadInAveragedData[np.where(loadInAveragedData[:,2]==minViscosity)[0][0],4]
                     ax.plot(shearStressForMinViscosity,minViscosity,marker='o',markersize=10,color='blue',mfc='none' , zorder=10 )
                 else:
-                    if tauMin==False:
-                        ax.plot(tauMinOnset,minViscosity,marker='o',markersize=10,color='blue',mfc='none' , zorder=10 )
-                    else:
-                        ax.plot(tauMinOnset,minViscosity[0],marker='o',markersize=10,color='blue',mfc='none' , zorder=10 )
-                    
-                    
-            if maxViscosityList[counter] != -1:
+                    tauMinOnset = find_nearest(loadInAveragedData[:,4],tauMin)
+                    ax.plot(tauMinOnset,minViscosity[0],marker='o',markersize=10,color='blue',mfc='none' , zorder=10 )
+
+            if float(packingFraction)/100 in phiVsMaxViscosity:
+                (x,y) = np.where(phiVsMaxViscosity==float(packingFraction)/100)
+                maxViscosity = phiVsMaxViscosity[x,1]
+                
                 shearStressForMaxViscosity = loadInAveragedData[np.where(loadInAveragedData[:,2]==maxViscosity)[0][0],4]
                 ax.plot(shearStressForMaxViscosity,maxViscosity,marker='o',markersize=10,color='red',mfc='none', zorder=10  )
-            counter = counter +1
             
-            if phiVsMinViscosity.size == 0:
-                
-                phiVsMinViscosity = np.array([float(packingFraction)/100 ,minViscosity])
-                phiVsMaxViscosity = np.array([float(packingFraction)/100 ,maxViscosity])   
-            else:
-                if tauMin==False:
-                    phiVsMinViscosity = np.vstack( (phiVsMinViscosity,np.array([float(packingFraction)/100 ,minViscosity])))
-                else:
-                    phiVsMinViscosity = np.vstack( (phiVsMinViscosity,np.array([float(packingFraction)/100 ,minViscosity[0]])))
-                    
-                
-                phiVsMaxViscosity = np.vstack( (phiVsMaxViscosity,np.array([float(packingFraction)/100 ,maxViscosity])) )
-
-
-    if maxMinPtsOn == True:
-        #Sort the viscosities based no the entry in the first column.
-        phiVsMinViscosity = phiVsMinViscosity[phiVsMinViscosity[:,0].argsort()]
-        phiVsMaxViscosity = phiVsMaxViscosity[phiVsMaxViscosity[:,0].argsort()]
+            
+        ax.text(1.3, 0.9, r"$\phi_0=$ "+ str(round(phi0,4)) + " $\pm$ " + str(round(phiJError0,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
+        ax.text(1.3, 0.83, r"$\phi_M=$ "+ str(round(phiM,4)) + " $\pm$ " + str(round(phiJErrorM,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
+        ax.text(1.3, 0.76, r"$\alpha_0=$ "+ str(round(alpha0,4)) + " $\pm$ " + str(round(alphaError0,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
+        ax.text(1.3, 0.69, r"$\alpha_M=$ "+ str(round(alphaM,4)) + " $\pm$ " + str(round(alphaErrorM,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
         
-        phiVsMinViscosity = phiVsMinViscosity[~np.isnan(phiVsMinViscosity).any(axis=1)]
-        phiVsMaxViscosity = phiVsMaxViscosity[~np.isnan(phiVsMaxViscosity).any(axis=1)]
+            
         
-    if maxMinPtsOn ==True:
-        if rescaleViscosity == False:
-            (phiM,alphaM,phiJErrorM,alphaErrorM) = fittingFunctions.fitAlphaPhiJNoRescale(phiVsMaxViscosity[:,1], phiVsMaxViscosity[:,0], suspendingViscosity)
-            (phi0,alpha0,phiJError0,alphaError0) = fittingFunctions.fitAlphaPhiJNoRescale(phiVsMinViscosity[:,1], phiVsMinViscosity[:,0], suspendingViscosity)
-            
-        else:
-            (phiM,alphaM,phiJErrorM,alphaErrorM) = fittingFunctions.fitAlphaPhiJRescaled(phiVsMaxViscosity[:,1], phiVsMaxViscosity[:,0])
-            (phi0,alpha0,phiJError0,alphaError0) = fittingFunctions.fitAlphaPhiJRescaled(phiVsMinViscosity[:,1], phiVsMinViscosity[:,0])
-            ax.text(1.3, 0.9, r"$\phi_0=$ "+ str(round(phi0,4)) + " $\pm$ " + str(round(phiJError0,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
-            ax.text(1.3, 0.83, r"$\phi_M=$ "+ str(round(phiM,4)) + " $\pm$ " + str(round(phiJErrorM,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
-            ax.text(1.3, 0.76, r"$\alpha_0=$ "+ str(round(alpha0,4)) + " $\pm$ " + str(round(alphaError0,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
-            ax.text(1.3, 0.69, r"$\alpha_M=$ "+ str(round(alphaM,4)) + " $\pm$ " + str(round(alphaErrorM,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
-            
+
 
             
 
@@ -187,9 +168,13 @@ def shearRateVsViscosityPlotter(topDir,solvent="normal",rescaleViscosity=False):
     
     for packingFraction in listOfSubDirs:
         
-        
-        loadInAveragedData = np.load(os.path.join(topDir, packingFraction , r"averagedData.npy" ))
-        loadInErrordata = np.load(os.path.join(topDir, packingFraction , r"errorsData.npy" ))
+        if rescaleViscosity ==False:
+            loadInAveragedData = np.load(os.path.join(topDir, packingFraction , r"averagedData.npy" ))
+            loadInErrordata = np.load(os.path.join(topDir, packingFraction , r"errorsData.npy" ))
+        else:
+            loadInAveragedData = np.load(os.path.join(topDir, packingFraction , r"averagedDataVR.npy" ))
+            loadInErrordata = np.load(os.path.join(topDir, packingFraction , r"errorsDataVR.npy" ))
+            
         
                 
         #First the plot as a function of shear stress.
@@ -219,37 +204,71 @@ def shearRateVsViscosityPlotter(topDir,solvent="normal",rescaleViscosity=False):
 
         
 
-def viscosityDivergencePlot(lowViscosityValues, lowPackingFractionValues,highViscosityValues, highPackingFractionValues):
+def viscosityDivergencePlot(viscosityValues,packingFractionValues,labelsForCurves,fixAlpha=False,titleOfPlot ="Newtonian Plateau's Divergences"):
+    
+    (numSystems,_) = np.shape(viscosityValues)
+    
+    ax = pyplot.subplot(111)
+    
+    if fixAlpha== False:
+        def divergingViscosityFunc(x,phiJ, alpha):
+            return ( 1 - (x/phiJ) )**( -alpha )
+    else:
+        def divergingViscosityFunc(x,phiJ):
+            return ( 1 - (x/phiJ) )**(-fixAlpha)
+        
+        
+    
+    phiJHolder = np.zeros(numSystems)
+    phiJErrorHolder = np.zeros(numSystems)
+    
+    if fixAlpha == False:
+        alphaHolder = np.zeros(numSystems)
+        alphaErrorHolder = np.zeros(numSystems)
     
     
-    def divergingViscosityFunc(x,phiJ, alpha):
-        return ( 1 - (x/phiJ) )**( -alpha )
-    
-    (phiJ0,alpha0,phiJError0,alphaError0) = fittingFunctions.fitAlphaPhiJRescaled(lowViscosityValues, lowPackingFractionValues)
-    (phiJM,alphaM,phiJErrorM,alphaErrorM) = fittingFunctions.fitAlphaPhiJRescaled(highViscosityValues, highPackingFractionValues)
-    
-#    phiJLineYValues = np.linspace(0,max(highViscosityValues),50)
-#    phiJMLineXValues = phiJGdCl*np.ones((50))
-#    phiJ0LineXValues = phiJ0*np.ones((50))
-    
-    
-    packingFractionValuesFit0 = np.linspace(0,phiJ0-.001,1000)
-    packingFractionValuesFitM = np.linspace(0,phiJM-.001,1000)
-    
-    
-    pyplot.plot(lowPackingFractionValues,lowViscosityValues,'o',label="Frictionless Plataeu")
-    pyplot.plot(packingFractionValuesFit0,divergingViscosityFunc(packingFractionValuesFit0,phiJ0,alpha0),label="Frictionless Fit")
-    
-    pyplot.plot(highPackingFractionValues,highViscosityValues,'o',label="Frictional Plataeu")
-    pyplot.plot(packingFractionValuesFitM,divergingViscosityFunc(packingFractionValuesFitM,phiJM,alphaM),label="Frictional Fit")
-#    pyplot.plot(phiJMLineXValues,phiJLineYValues,'.')
-#    pyplot.plot(phiJ0LineXValues,phiJLineYValues,'.')
-    pyplot.legend()
-    pyplot.title("Newtonian Plateau's Frictionless and Frictional Divergences")
+    for i in range(0,numSystems):
+        currentViscosityValues = viscosityValues[i,:]
+        currentViscosityValues = currentViscosityValues[~np.isnan(currentViscosityValues)]
+        
+        currentPhiValues = packingFractionValues[i,:]
+        currentPhiValues = currentPhiValues[~np.isnan(currentPhiValues)]
+        if fixAlpha == False:
+            (phiJHolder[i],alphaHolder[i],phiJErrorHolder[i],alphaErrorHolder[i]) = fittingFunctions.fitAlphaPhiJRescaled(currentViscosityValues, currentPhiValues)
+            ax.plot(np.linspace(0,phiJHolder[i]-.001,1000),divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i],alphaHolder[i]),label=labelsForCurves[i] +" Fit" )
+
+            
+            minimumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]-phiJErrorHolder[i],alphaHolder[i]+alphaErrorHolder[i])
+            maximumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]+phiJErrorHolder[i],alphaHolder[i]-alphaErrorHolder[i])
+            #pyplot.plot(np.linspace(0,phiJHolder[i]-.001,1000),minimumError,label="minimumError")
+            #pyplot.plot(np.linspace(0,phiJHolder[i]-.001,1000), maximumError,label="maximumError")
+            
+            ax.fill_between(np.linspace(0,phiJHolder[i]-.001,1000), minimumError, maximumError, where=maximumError <= minimumError, facecolor='lightblue')
+        else:
+            (phiJHolder[i],phiJErrorHolder[i]) = fittingFunctions.fitPhiJRescaledFixedAlpha(currentViscosityValues, currentPhiValues,fixAlpha)
+            minimumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]-phiJErrorHolder[i])
+            maximumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]+phiJErrorHolder[i])
+            ax.fill_between(np.linspace(0,phiJHolder[i]-.001,1000), minimumError, maximumError, where=maximumError <= minimumError, facecolor='lightblue')
+            
+            ax.plot(np.linspace(0,phiJHolder[i]-.001,1000),divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]),label=labelsForCurves[i] +" Fit" )
+            
+        ax.plot(currentPhiValues, currentViscosityValues,'o',label=labelsForCurves[i])
+
+        
+        
+    ax.legend()
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    pyplot.title(titleOfPlot)
     pyplot.xlabel("Packing Fraction $\phi$")
     pyplot.ylabel("Rescaled Viscosity $\eta_R$")
-    pyplot.xlim(min(lowPackingFractionValues)-.05,max(lowPackingFractionValues)+.04)
-    pyplot.ylim(0,100)
+    pyplot.xlim(np.nanmin(packingFractionValues)-.05,np.nanmax(packingFractionValues)+.04)
+    pyplot.ylim(0,np.nanmax(viscosityValues)+20)
+    if fixAlpha == False:
+        return (phiJHolder,alphaHolder,phiJErrorHolder,alphaErrorHolder)
+    else:
+        return (phiJHolder,phiJErrorHolder)
     
 
 def logarithmicPlotter(viscosityValues0,viscosityValues1,packingFractionValues0,packingFractionValues1,alpha0,phiJ0,alpha1,phiJ1,highOrLow):
@@ -550,6 +569,105 @@ def shearJammingPhaseDiagramTwoSystems(phi01,phiM1,tauStar1,alpha1,phi02,phiM2,t
     
     
     
+def WCModelComparison(topDir,outputDir,phi0,phiM,tauStar,alpha,beta=False):
     
+    
+    
+    listOfSubDirs = next(os.walk(topDir))[1]
+
+    
+    stressValues = np.linspace(.0001,1e3,10000)
+    
+    if beta==False:
+        def rescaledNewtonianViscosity(stress,phi):
+            return (1-phi/(phiM+(phi0-phiM)*np.exp(-stress/tauStar)))**(-alpha)
+    else:
+        def rescaledNewtonianViscosity(stress,phi):
+            return (1-phi/(phi0+(phiM-phi0)*np.exp((-tauStar/stress))**beta))**(-alpha)
+    
+    for packingFraction in listOfSubDirs:
+        loadInAveragedData = np.load(os.path.join(topDir, packingFraction , r"averagedDataVR.npy" ))
+        loadInErrors = np.load(os.path.join(topDir, packingFraction , r"errorsDataVR.npy" ))
+        
+        phiValues = (float(packingFraction)/100)*np.ones(10000)
+        
+        
+        
+        #Plot Wyart-Cates Prediction
+        pyplot.plot(stressValues,rescaledNewtonianViscosity(stressValues,phiValues))
+        #Plot Actual Data
+        pyplot.errorbar(loadInAveragedData[:,4],loadInAveragedData[:,2],yerr=loadInErrors[:,2],label=packingFraction,marker='o',markersize=5)
+        
+        pyplot.title(packingFraction)   
+        pyplot.xlabel("Shear Stress [Pa]")
+        pyplot.ylabel("Rescaled Viscosity")
+        pyplot.yscale('log')
+        pyplot.xscale('log')
+        pyplot.ylim(1,1e3)
+        pyplot.xlim(1e-1,1e3)
+        pyplot.savefig(os.path.join(outputDir,str(float(packingFraction))+".png"))
+        pyplot.clf()
+        
+        
+def WCModelComparisonTwoSystems(topDir1,topDir2,outputDir,phi01,phiM1,tauStar1,alpha1,phi02,phiM2,tauStar2,alpha2):
+    
+    
+    
+    dirsIn1 = next(os.walk(topDir1))[1]
+    dirsIn2 = next(os.walk(topDir2))[1]
+    
+    #They need to be sorted so we have to convert them from strings to floats and then back
+    dirsIn1 = np.sort([float(i) for i in dirsIn1])
+    dirsIn2 = np.sort([float(i) for i in dirsIn2])
+    #Back to strings!
+    dirsIn1 = [str(i) for i in dirsIn1]
+    dirsIn2 = [str(i) for i in dirsIn2]
+
+    
+    stressValues = np.linspace(.0001,1e3,10000)
+    
+
+    def rescaledNewtonianViscosity1(stress,phi):
+        return (1-phi/(phiM1+(phi01-phiM1)*np.exp(-stress/tauStar1)))**(-alpha1)
+    
+    def rescaledNewtonianViscosity2(stress,phi):
+        return (1-phi/(phiM2+(phi02-phiM2)*np.exp(-stress/tauStar2)))**(-alpha2)
+
+    
+    for i in range(0,len(dirsIn1)):
+        
+        loadInAveragedData1 = np.load(os.path.join(topDir1,dirsIn1[i], r"averagedDataVR.npy"))
+        loadInErrors1 = np.load(os.path.join(topDir1,dirsIn1[i], r"errorsDataVR.npy"))
+        
+        loadInAveragedData2 = np.load(os.path.join(topDir2,dirsIn2[i], r"averagedDataVR.npy"))
+        loadInErrors2 = np.load(os.path.join(topDir2,dirsIn2[i], r"errorsDataVR.npy"))
+        
+        phiValues1 = (float(dirsIn1[i])/100)*np.ones(10000)
+        phiValues2 = (float(dirsIn2[i])/100)*np.ones(10000)
+        
+        
+        #Plot Wyart-Cates Prediction for 1
+        pyplot.plot(stressValues,rescaledNewtonianViscosity1(stressValues,phiValues1),label="Cornstarch Fit")
+        #Plot Wyart-Cates Prediction for 2
+        pyplot.plot(stressValues,rescaledNewtonianViscosity2(stressValues,phiValues2),label="GdCl Fit")
+        
+        pyplot.errorbar(loadInAveragedData1[:,4],loadInAveragedData1[:,2],yerr=loadInErrors1[:,2],label=dirsIn1[i]+"C",marker='o')
+        pyplot.errorbar(loadInAveragedData2[:,4],loadInAveragedData2[:,2],yerr=loadInErrors2[:,2],label=dirsIn2[i]+"GdCl",marker="D")
+
+        figName = str(round(float(dirsIn1[i])))
+        
+        pyplot.title(figName)   
+        pyplot.xlabel("Shear Stress [Pa]")
+        pyplot.ylabel("Rescaled Viscosity")
+        pyplot.yscale('log')
+        pyplot.xscale('log')
+        pyplot.ylim(1,5e3)
+        pyplot.xlim(1e-1,1e3)
+        pyplot.legend()
+        pyplot.savefig(os.path.join(outputDir,str(float(figName))+".png"))
+        pyplot.clf()
+        
+        
+
         
         
