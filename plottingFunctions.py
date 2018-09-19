@@ -188,9 +188,15 @@ def shearRateVsViscosityPlotter(topDir,solvent="normal",rescaleViscosity=False):
 
         
 
-def viscosityDivergencePlot(viscosityValues,packingFractionValues,labelsForCurves,fixAlpha=False,titleOfPlot ="Newtonian Plateau's Divergences"):
+def viscosityDivergencePlot(viscosityValues,packingFractionValues,viscosityErrors,labelsForCurves,fixAlpha=False,titleOfPlot ="Newtonian Plateau's Divergences"):
     
-    (numSystems,_) = np.shape(viscosityValues)
+    
+    shapeOfVis = np.shape(viscosityValues)
+    
+    if np.shape(shapeOfVis)[0]==1:
+        numSystems=1
+    else:
+        numSystems = shapeOfVis[0]
     
     ax = pyplot.subplot(111)
     
@@ -214,16 +220,25 @@ def viscosityDivergencePlot(viscosityValues,packingFractionValues,labelsForCurve
     
     
     for i in range(0,numSystems):
-        currentViscosityValues = viscosityValues[i,:]
+        print(numSystems)
+        if numSystems == 1:
+            currentViscosityErrors = viscosityErrors
+            currentPhiValues = packingFractionValues
+            currentViscosityValues = viscosityValues
+        else:
+            currentViscosityErrors = viscosityErrors[i,:]
+            currentPhiValues = packingFractionValues[i,:]
+            currentViscosityValues = viscosityValues[i,:]
+            
+            
         currentViscosityValues = currentViscosityValues[~np.isnan(currentViscosityValues)]
-        
-        currentPhiValues = packingFractionValues[i,:]
+        currentViscosityErrors = currentViscosityErrors[~np.isnan(currentViscosityValues)] 
         currentPhiValues = currentPhiValues[~np.isnan(currentPhiValues)]
+        
         if fixAlpha == False:
-            (phiJHolder[i],alphaHolder[i],phiJErrorHolder[i],alphaErrorHolder[i]) = fittingFunctions.fitAlphaPhiJRescaled(currentViscosityValues, currentPhiValues)
+            (phiJHolder[i],alphaHolder[i],phiJErrorHolder[i],alphaErrorHolder[i]) = fittingFunctions.viscosityDivergenceFit(currentPhiValues,currentViscosityValues,currentViscosityErrors,False,False)
             ax.plot(np.linspace(0,phiJHolder[i]-.001,1000),divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i],alphaHolder[i]),label=labelsForCurves[i] +" Fit" )
 
-            
             minimumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]-phiJErrorHolder[i],alphaHolder[i]+alphaErrorHolder[i])
             maximumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]+phiJErrorHolder[i],alphaHolder[i]-alphaErrorHolder[i])
             #pyplot.plot(np.linspace(0,phiJHolder[i]-.001,1000),minimumError,label="minimumError")
@@ -231,16 +246,14 @@ def viscosityDivergencePlot(viscosityValues,packingFractionValues,labelsForCurve
             
             ax.fill_between(np.linspace(0,phiJHolder[i]-.001,1000), minimumError, maximumError, where=maximumError <= minimumError, facecolor='lightblue')
         else:
-            errorOnPhi = .0005*np.ones(len(currentPhiValues))
-            (phiJHolder[i],phiJErrorHolder[i]) = fittingFunctions.fitPhiJRescaledFixedAlpha(currentViscosityValues, currentPhiValues,fixAlpha,errorOnPhi)
+            (phiJHolder[i],phiJErrorHolder[i]) = fittingFunctions.viscosityDivergenceFit(currentPhiValues,currentViscosityValues,currentViscosityErrors,False,fixAlpha)
             minimumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]-phiJErrorHolder[i])
             maximumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]+phiJErrorHolder[i])
             ax.fill_between(np.linspace(0,phiJHolder[i]-.001,1000), minimumError, maximumError, where=maximumError <= minimumError, facecolor='lightblue')
             
             ax.plot(np.linspace(0,phiJHolder[i]-.001,1000),divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]),label=labelsForCurves[i] +" Fit" )
-        
-        errorValues = .0005*np.ones(len(currentPhiValues))
-        ax.errorbar(currentPhiValues, currentViscosityValues,fmt='o',xerr=errorValues,label=labelsForCurves[i])
+        print(currentViscosityErrors)
+        ax.errorbar(currentPhiValues, currentViscosityValues,fmt='o',yerr=currentViscosityErrors,label=labelsForCurves[i])
 
         
         
