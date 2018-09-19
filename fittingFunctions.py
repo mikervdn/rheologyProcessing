@@ -10,59 +10,6 @@ import numpy as np
 import os
 import plottingFunctions
 
-
-def fitAlphaPhiJNoRescale(viscosityValues, packingFractionValues, suspendingViscosity):
-    
-    def divergingViscosityFunc(x,phiJ, alpha):
-        
-        return suspendingViscosity * ( 1 - (x/phiJ) )**( -alpha )
-    
-    
-    (popt, pcov) = curve_fit(divergingViscosityFunc, packingFractionValues, viscosityValues,bounds=(0, [1, 100]))
-    
-    alpha = popt[1]
-    phiJ = popt[0]
-    errors = np.sqrt(np.diag(pcov))
-    alphaError = errors[1]
-    phiJError = errors[0]
-    
-    
-    return (phiJ,alpha,phiJError,alphaError)
-
-def fitAlphaPhiJRescaled(viscosityValues, packingFractionValues):
-    
-    def divergingViscosityFunc(x,phiJ, alpha):
-        
-        return  ( 1 - (x/phiJ) )**( -alpha )
-    
-    
-    (popt, pcov) = curve_fit(divergingViscosityFunc, packingFractionValues, viscosityValues,bounds=(0, [1, 100]))
-    
-    alpha = popt[1]
-    phiJ = popt[0]
-    errors = np.sqrt(np.diag(pcov))
-    alphaError = errors[1]
-    phiJError = errors[0]
-    
-    return (phiJ,alpha,phiJError,alphaError)
-
-def fitPhiJRescaledFixedAlpha(viscosityValues, packingFractionValues,alpha):
-    
-    def divergingViscosityFuncFixedAlpha(x,phiJ):
-        
-        return  ( 1 - (x/phiJ) )**( -alpha )
-    
-    
-    (popt, pcov) = curve_fit(divergingViscosityFuncFixedAlpha, packingFractionValues, viscosityValues,bounds=(0, [1]))
-    
-
-    phiJ = popt[0]
-    errors = np.sqrt(np.diag(pcov))
-    phiJError = errors[0]
-    
-    return (phiJ,phiJError)
-
-
 def tauStarFit(packingFractionValues,stressValues,shearRateValues,phi0,phiM,alpha,suspendingViscosity):
     
     #X is a tuple that is X = (packingFractionValues,stressValues)
@@ -113,10 +60,10 @@ def errorInPhiDataPoint(cornstarchMass,solventMass,cornstarchRho,solventRho,erro
     
     dPhi_dSolventDensity = cornstarchMass*solventMass/(cornstarchRho*(solventRho*densityDenom)**2)
     
-    return (dPhi_dCornstarchMass*errorCornstarchMass)**2 + (dPhi_dSolventMass**errorSolventMass)**2 + (dPhi_dSolventDensity*errorSolventRho)**2
+    return np.sqrt((dPhi_dCornstarchMass*errorCornstarchMass)**2 + (dPhi_dSolventMass*errorSolventMass)**2 + (dPhi_dSolventDensity*errorSolventRho)**2)
     
     
-def newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingViscosity=False,rescaleViscosity=False,tauMin=False):
+def newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingViscosity=False,rescaleViscosity=False,tauMin=False,fixAlpha=False):
     
     listOfSubDirs = next(os.walk(topDir))[1]
     listOfSubDirs = [float(i) for i in listOfSubDirs]
@@ -135,37 +82,42 @@ def newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingVi
         
         if rescaleViscosity == False:
             loadInAveragedData = np.load(os.path.join(topDir, packingFraction , r"averagedData.npy" ))
+            loadInErrorData = np.load(os.path.join(topDir, packingFraction , r"errorsData.npy" ))
         else:
             loadInAveragedData = np.load(os.path.join(topDir, packingFraction , r"averagedDataVR.npy" ))
-            
-        
+            loadInErrorData = np.load(os.path.join(topDir, packingFraction , r"errorsDataVR.npy" ))
+                    
         sortedViscosities = np.sort(loadInAveragedData[:,2])
-        
-                
-
-            
+                 
         if minViscosityList[counter] == -1:
             minViscosity = np.nan
+            errorOnMinViscosity = np.nan
         else:
             if tauMin == False:
                 minViscosity = sortedViscosities[minViscosityList[counter]]
+                indexOfMinViscosity = np.where(loadInAveragedData[:,2]==minViscosity)
+                errorOnMinViscosity = loadInErrorData[indexOfMinViscosity[0][0],2]
             else:
                 tauMinOnset = plottingFunctions.find_nearest(loadInAveragedData[:,4],tauMin)
                 minViscosity = loadInAveragedData[np.where(loadInAveragedData[:,4]==tauMinOnset),2][0]
-                
-                
+                indexOfMinViscosity = np.where(loadInAveragedData[:,2]==minViscosity)
+                errorOnMinViscosity = loadInErrorData[indexOfMinViscosity[0][0],2]
         if maxViscosityList[counter] == -1:
             maxViscosity = np.nan
+            errorOnMaxViscosity = np.nan
         else:
             maxViscosity = sortedViscosities[-(maxViscosityList[counter]+1)]
-                    
-        
-        
+            indexOfMaxViscosity = np.where(loadInAveragedData[:,2]==maxViscosity)
+            errorOnMaxViscosity = loadInErrorData[indexOfMaxViscosity[0][0],2]
+            
         counter = counter +1
         if phiVsMinViscosity.size == 0:
             
             phiVsMinViscosity = np.array([float(packingFraction)/100 ,minViscosity])
-            phiVsMaxViscosity = np.array([float(packingFraction)/100 ,maxViscosity])   
+            phiVsMaxViscosity = np.array([float(packingFraction)/100 ,maxViscosity])
+            phiVsMinViscosityErrors = np.array([float(packingFraction)/100 ,errorOnMinViscosity])
+            phiVsMaxViscosityErrors = np.array([float(packingFraction)/100 ,errorOnMaxViscosity])
+            
         else:
             if tauMin==False:
                 phiVsMinViscosity = np.vstack( (phiVsMinViscosity,np.array([float(packingFraction)/100 ,minViscosity])))
@@ -173,25 +125,79 @@ def newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingVi
                 phiVsMinViscosity = np.vstack( (phiVsMinViscosity,np.array([float(packingFraction)/100 ,minViscosity[0]])))
             
             phiVsMaxViscosity = np.vstack( (phiVsMaxViscosity,np.array([float(packingFraction)/100 ,maxViscosity])) )
+            phiVsMinViscosityErrors = np.vstack( (phiVsMinViscosityErrors,np.array([float(packingFraction)/100 ,errorOnMinViscosity])))
+            phiVsMaxViscosityErrors = np.vstack( (phiVsMaxViscosityErrors,np.array([float(packingFraction)/100 ,errorOnMaxViscosity])))
     
     
     phiVsMinViscosity = phiVsMinViscosity[phiVsMinViscosity[:,0].argsort()]
     phiVsMaxViscosity = phiVsMaxViscosity[phiVsMaxViscosity[:,0].argsort()]
+    phiVsMaxViscosityErrors = phiVsMaxViscosityErrors[phiVsMaxViscosityErrors[:,0].argsort()]
+    phiVsMinViscosityErrors = phiVsMinViscosityErrors[phiVsMinViscosityErrors[:,0].argsort()]
         
     phiVsMinViscosity = phiVsMinViscosity[~np.isnan(phiVsMinViscosity).any(axis=1)]
     phiVsMaxViscosity = phiVsMaxViscosity[~np.isnan(phiVsMaxViscosity).any(axis=1)]
+    phiVsMinViscosityErrors = phiVsMinViscosityErrors[~np.isnan(phiVsMinViscosityErrors).any(axis=1)]
+    phiVsMaxViscosityErrors = phiVsMaxViscosityErrors[~np.isnan(phiVsMaxViscosityErrors).any(axis=1)]
+    
+    
+    
+    if (rescaleViscosity == False) and (fixAlpha==False):
+        (phiM,alphaM,phiJErrorM,alphaErrorM) = viscosityDivergenceFit(phiVsMaxViscosity[:,0], phiVsMaxViscosity[:,1],phiVsMaxViscosityErrors[:,1], suspendingViscosity,False)
+        (phi0,alpha0,phiJError0,alphaError0) = viscosityDivergenceFit(phiVsMinViscosity[:,0], phiVsMinViscosity[:,1],phiVsMinViscosityErrors[:,1], suspendingViscosity,False)
+        return (phiVsMinViscosity,phiVsMaxViscosity,phiVsMinViscosityErrors,phiVsMaxViscosityErrors,phi0,alpha0,phiJError0,alphaError0,phiM,alphaM,phiJErrorM,alphaErrorM)
+    if (rescaleViscosity!=False) and (fixAlpha==False):
+        (phiM,alphaM,phiJErrorM,alphaErrorM) = viscosityDivergenceFit(phiVsMaxViscosity[:,0], phiVsMaxViscosity[:,1],phiVsMaxViscosityErrors[:,1], False,False)
+        (phi0,alpha0,phiJError0,alphaError0) = viscosityDivergenceFit(phiVsMinViscosity[:,0], phiVsMinViscosity[:,1],phiVsMinViscosityErrors[:,1], False,False)
+        return (phiVsMinViscosity,phiVsMaxViscosity,phiVsMinViscosityErrors,phiVsMaxViscosityErrors,phi0,alpha0,phiJError0,alphaError0,phiM,alphaM,phiJErrorM,alphaErrorM)
+    if (rescaleViscosity != False) and (fixAlpha!=False):
+        (phiM,phiJErrorM) = viscosityDivergenceFit(phiVsMaxViscosity[:,0], phiVsMaxViscosity[:,1],phiVsMaxViscosityErrors[:,1], False,fixAlpha)
+        (phi0,phiJError0) = viscosityDivergenceFit(phiVsMinViscosity[:,0], phiVsMinViscosity[:,1],phiVsMinViscosityErrors[:,1], False,fixAlpha)
+        return (phiVsMinViscosity,phiVsMaxViscosity,phiVsMinViscosityErrors,phiVsMaxViscosityErrors,phi0,phiJError0,phiM,phiJErrorM)
+    if (rescaleViscosity == False) and (fixAlpha!=False):
+        (phiM,phiJErrorM) = viscosityDivergenceFit(phiVsMaxViscosity[:,0], phiVsMaxViscosity[:,1],phiVsMaxViscosityErrors[:,1], suspendingViscosity,fixAlpha)
+        (phi0,phiJError0) = viscosityDivergenceFit(phiVsMinViscosity[:,0], phiVsMinViscosity[:,1],phiVsMinViscosityErrors[:,1], suspendingViscosity,fixAlpha)
+        return (phiVsMinViscosity,phiVsMaxViscosity,phiVsMinViscosityErrors,phiVsMaxViscosityErrors,phi0,phiJError0,phiM,phiJErrorM)
+    
+
+    
+def viscosityDivergenceFit(packingFractions,viscosities,viscosityErrors,suspendingViscosity=False,fixAlpha=False):
+    
+    if (suspendingViscosity!=False) and (fixAlpha!=False):
+        def divergingViscosityFunc(x,phiJ):
+            return  suspendingViscosity*( 1 - (x/phiJ) )**( -fixAlpha )
         
-    if rescaleViscosity == False:
-        (phiM,alphaM,phiJErrorM,alphaErrorM) = fitAlphaPhiJNoRescale(phiVsMaxViscosity[:,1], phiVsMaxViscosity[:,0], suspendingViscosity)
-        (phi0,alpha0,phiJError0,alphaError0) = fitAlphaPhiJNoRescale(phiVsMinViscosity[:,1], phiVsMinViscosity[:,0], suspendingViscosity)
-            
-    else:
-        (phiM,alphaM,phiJErrorM,alphaErrorM) = fitAlphaPhiJRescaled(phiVsMaxViscosity[:,1], phiVsMaxViscosity[:,0])
-        (phi0,alpha0,phiJError0,alphaError0) = fitAlphaPhiJRescaled(phiVsMinViscosity[:,1], phiVsMinViscosity[:,0])
-    
+        (phiJ, phiJError) =curve_fit(divergingViscosityFunc,packingFractions,viscosities,sigma=viscosityErrors)  
+        return (phiJ, phiJError)
         
-    return (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0,phiJError0,alphaError0,phiJErrorM,alphaErrorM)
+    if (suspendingViscosity!=False) and (fixAlpha==False):
+        def divergingViscosityFunc(x,phiJ,alpha):
+            return  suspendingViscosity*( 1 - (x/phiJ) )**( -alpha )
+        (popt, pcov) =curve_fit(divergingViscosityFunc,packingFractions,viscosities,sigma=viscosityErrors)  
+        errors = np.sqrt(np.diag(pcov))
+        phiJ = popt[0]
+        alpha = popt[1]
+        phiJError = errors[0]
+        alphaError = errors[1]
+        return (phiJ, alpha,phiJError,alphaError)
     
     
+    if (suspendingViscosity==False) and (fixAlpha==False):
+        def divergingViscosityFunc(x,phiJ,alpha):
+            return  ( 1 - (x/phiJ) )**( -alpha )
+        (popt, pcov) =curve_fit(divergingViscosityFunc,packingFractions,viscosities,sigma=viscosityErrors)  
+        errors = np.sqrt(np.diag(pcov))
+        phiJ = popt[0]
+        alpha = popt[1]
+        phiJError = errors[0]
+        alphaError = errors[1]
+        return (phiJ, alpha,phiJError,alphaError)
     
-    
+
+    if (suspendingViscosity==False) and (fixAlpha!=False):
+        def divergingViscosityFunc(x,phiJ):
+            return  ( 1 - (x/phiJ) )**( -fixAlpha )
+        
+        (phiJ, phiJError) =curve_fit(divergingViscosityFunc,packingFractions,viscosities,sigma=viscosityErrors)  
+        return (phiJ, phiJError)
+        
+

@@ -10,6 +10,7 @@ import numpy as np
 import os
 from matplotlib import pyplot
 import fittingFunctions
+import antonParrDataParser
 
 def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=False,maxViscosityList=False,solvent="normal",rescaleViscosity=True,tauMin=False,noErrors=False,suspendingViscosity=False):
     
@@ -63,14 +64,14 @@ def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=Fal
     if maxMinPtsOn==True:
         if tauMin==False:
             if (suspendingViscosity==False) and (rescaleViscosity!=False):
-                (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0,phiJError0,alphaError0,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,False,True,False)
+                (phiVsMinViscosity,phiVsMaxViscosity,phiVsMinViscosityErrors,phiVsMaxViscosityErrors,phi0,alpha0,phiJError0,alphaError0,phiM,alphaM,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,False,True,False)
             else:
-                (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0,phiJError0,alphaError0,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingViscosity,False,False)
+                (phiVsMinViscosity,phiVsMaxViscosity,phiVsMinViscosityErrors,phiVsMaxViscosityErrors,phi0,alpha0,phiJError0,alphaError0,phiM,alphaM,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingViscosity,False,False)
         else:
             if (suspendingViscosity==False) and (rescaleViscosity!=False):
-                (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0,phiJError0,alphaError0,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,False,True,tauMin)
+                (phiVsMinViscosity,phiVsMaxViscosity,phiVsMinViscosityErrors,phiVsMaxViscosityErrors,phi0,alpha0,phiJError0,alphaError0,phiM,alphaM,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,False,True,tauMin)
             else:
-                (phiVsMinViscosity,phiVsMaxViscosity,phiM,alphaM,phi0,alpha0,phiJError0,alphaError0,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingViscosity,False,tauMin)
+                (phiVsMinViscosity,phiVsMaxViscosity,phiVsMinViscosityErrors,phiVsMaxViscosityErrors,phi0,alpha0,phiJError0,alphaError0,phiM,alphaM,phiJErrorM,alphaErrorM)=fittingFunctions.newtonianPlateauFinder(topDir,minViscosityList,maxViscosityList,suspendingViscosity,False,tauMin)
                 
 
         for packingFraction in listOfSubDirs:
@@ -104,12 +105,6 @@ def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=Fal
         ax.text(1.3, 0.83, r"$\phi_M=$ "+ str(round(phiM,4)) + " $\pm$ " + str(round(phiJErrorM,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
         ax.text(1.3, 0.76, r"$\alpha_0=$ "+ str(round(alpha0,4)) + " $\pm$ " + str(round(alphaError0,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
         ax.text(1.3, 0.69, r"$\alpha_M=$ "+ str(round(alphaM,4)) + " $\pm$ " + str(round(alphaErrorM,4)), transform=ax.transAxes, fontsize=14,verticalalignment='top')
-        
-            
-        
-
-
-            
 
     pyplot.yscale('log')
     pyplot.xscale('log')
@@ -130,17 +125,6 @@ def shearStressVsViscosityPlotter(topDir, maxMinPtsOn=False,minViscosityList=Fal
     pyplot.grid(True)
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    #if maxMinPtsOn == True:
-        #pyplot.text(1700, 10.2, "$\phi_0$ = " + str(round(phi0,4)) + "$\pm$" + str(round(phiJError0,4)),fontsize=14)
-        #pyplot.text(1700, 7.8, "$\phi_M$ = " + str(round(phiM,4))+ "$\pm$" + str(round(phiJErrorM,4)),fontsize=14)
-        #pyplot.text(1700, .0035, r"$\alpha_M$ = " + str(round(alphaM,4))+ "$\pm$" + str(round(alphaErrorM,4)),fontsize=14)
-        #pyplot.text(1700, .0065, r"$\alpha_0$ = " + str(round(alpha0,4))+ "$\pm$" + str(round(alphaError0,4)),fontsize=14)
-#        ax.text(2, 1, "$\phi_0$ = " + str(round(phi0,2)))
-#        ax.text(1600, 4, "$alpha_0$ = " + str(round(alpha0,2)))
-        #ax.text(1600, 0, "$\phi_M$ = " + str(round(phiM,2)))
-        #ax.text(1600, 0, "$alpha_M$ = " + str(round(alphaM,2)))
-    # Put a legend to the right of the current axis
-    
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     
     if maxMinPtsOn == True:
@@ -216,6 +200,8 @@ def viscosityDivergencePlot(viscosityValues,packingFractionValues,labelsForCurve
     else:
         def divergingViscosityFunc(x,phiJ):
             return ( 1 - (x/phiJ) )**(-fixAlpha)
+    
+    
         
         
     
@@ -245,14 +231,16 @@ def viscosityDivergencePlot(viscosityValues,packingFractionValues,labelsForCurve
             
             ax.fill_between(np.linspace(0,phiJHolder[i]-.001,1000), minimumError, maximumError, where=maximumError <= minimumError, facecolor='lightblue')
         else:
-            (phiJHolder[i],phiJErrorHolder[i]) = fittingFunctions.fitPhiJRescaledFixedAlpha(currentViscosityValues, currentPhiValues,fixAlpha)
+            errorOnPhi = .0005*np.ones(len(currentPhiValues))
+            (phiJHolder[i],phiJErrorHolder[i]) = fittingFunctions.fitPhiJRescaledFixedAlpha(currentViscosityValues, currentPhiValues,fixAlpha,errorOnPhi)
             minimumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]-phiJErrorHolder[i])
             maximumError = divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]+phiJErrorHolder[i])
             ax.fill_between(np.linspace(0,phiJHolder[i]-.001,1000), minimumError, maximumError, where=maximumError <= minimumError, facecolor='lightblue')
             
             ax.plot(np.linspace(0,phiJHolder[i]-.001,1000),divergingViscosityFunc(np.linspace(0,phiJHolder[i]-.001,1000),phiJHolder[i]),label=labelsForCurves[i] +" Fit" )
-            
-        ax.plot(currentPhiValues, currentViscosityValues,'o',label=labelsForCurves[i])
+        
+        errorValues = .0005*np.ones(len(currentPhiValues))
+        ax.errorbar(currentPhiValues, currentViscosityValues,fmt='o',xerr=errorValues,label=labelsForCurves[i])
 
         
         
@@ -609,7 +597,7 @@ def WCModelComparison(topDir,outputDir,phi0,phiM,tauStar,alpha,beta=False):
         pyplot.clf()
         
         
-def WCModelComparisonTwoSystems(topDir1,topDir2,outputDir,phi01,phiM1,tauStar1,alpha1,phi02,phiM2,tauStar2,alpha2):
+def WCModelComparisonTwoSystems(topDir1,topDir2,outputDir,phi01,phiM1,tauStar1,alpha1,phi02,phiM2,tauStar2,alpha2,phi01E,phi02E,phiM1E,phiM2E,tauStar1E,tauStar2E,alpha1E,alpha2E):
     
     
     
@@ -648,12 +636,22 @@ def WCModelComparisonTwoSystems(topDir1,topDir2,outputDir,phi01,phiM1,tauStar1,a
         
         #Plot Wyart-Cates Prediction for 1
         pyplot.plot(stressValues,rescaledNewtonianViscosity1(stressValues,phiValues1),label="Cornstarch Fit")
+        yMinE1 = (1-(float(dirsIn1[i])/100)/((phiM1-phiM1E)+((phi01-phi01E)-(phiM1-phiM1E))*np.exp(-stressValues/(tauStar1-tauStar1E))))**(-(alpha1-alpha1E))
+        yMaxE1 = (1-(float(dirsIn1[i])/100)/((phiM1+phiM1E)+((phi01+phi01E)-(phiM1+phiM1E))*np.exp(-stressValues/(tauStar1+tauStar1E))))**(-(alpha1+alpha1E))
+        yMinE1 = np.squeeze(yMinE1)
+        yMaxE1 = np.squeeze(yMaxE1)
+        pyplot.fill_between(stressValues,yMinE1,yMaxE1,yMinE1>=yMaxE1)
         #Plot Wyart-Cates Prediction for 2
         pyplot.plot(stressValues,rescaledNewtonianViscosity2(stressValues,phiValues2),label="GdCl Fit")
+        yMinE2 = (1-(float(dirsIn2[i])/100)/((phiM2-phiM2E)+((phi02-phi02E)-(phiM2-phiM2E))*np.exp(-stressValues/(tauStar2-tauStar2E))))**(-(alpha2-alpha2E))
+        yMaxE2 = (1-(float(dirsIn2[i])/100)/((phiM2+phiM2E)+((phi02+phi02E)-(phiM2+phiM2E))*np.exp(-stressValues/(tauStar2+tauStar2E))))**(-(alpha2+alpha2E))
+        yMinE2 = np.squeeze(yMinE2)
+        yMaxE2 = np.squeeze(yMaxE2)
+        pyplot.fill_between(stressValues,yMinE2,yMaxE2,yMinE2>=yMaxE2)
         
         pyplot.errorbar(loadInAveragedData1[:,4],loadInAveragedData1[:,2],yerr=loadInErrors1[:,2],label=dirsIn1[i]+"C",marker='o')
         pyplot.errorbar(loadInAveragedData2[:,4],loadInAveragedData2[:,2],yerr=loadInErrors2[:,2],label=dirsIn2[i]+"GdCl",marker="D")
-
+        
         figName = str(round(float(dirsIn1[i])))
         
         pyplot.title(figName)   

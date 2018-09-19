@@ -29,6 +29,7 @@ All of the data
 
 import numpy as np 
 import os
+import fittingFunctions
 
 
 def rheologyDataParserOld( fileName, outputDirectory ):    
@@ -232,6 +233,40 @@ def tauStarDataPackager(topDir,rescaledViscosity=False):
             packagedData = np.concatenate((packagedData,np.concatenate((float(packingFraction)*np.ones((numRows,1)),np.expand_dims(loadInAveragedData[:,4],axis=1),np.expand_dims(loadInAveragedData[:,3],axis=1)),axis=1)),axis=0)
     np.save(os.path.join(topDir,"tauStarPackagedData"),packagedData)
     return packagedData
+
+
+
+def prepDataPackager(topDir,errorCornstarchMass,errorSolventMass,errorSolventRho):
+    
+    
+    errorData = []
+    listOfSubDirs = next(os.walk(topDir))[1]
+    
+    for packingFraction in listOfSubDirs:
+        
+        currentData = np.loadtxt(os.path.join(topDir, packingFraction , r"prepDetails" ))
+        
+        currentData = np.append(currentData,float(packingFraction)/100)
+        
+        currentData = np.transpose(np.expand_dims(currentData,axis=1))
+        
+        soluteMass = currentData[0,1]
+        solventMass = currentData[0,1]
+        solventRho = currentData[0,2]
+        soluteRho = currentData[0,3]
+        errorInCurrentPhi = fittingFunctions.errorInPhiDataPoint(soluteMass,solventMass,soluteRho,solventRho,errorCornstarchMass,errorSolventMass,errorSolventRho)
+        errorInCurrentPhi = np.expand_dims(errorInCurrentPhi,axis=0)
+        np.save(os.path.join(topDir, packingFraction , r"errorInPhi" ),errorInCurrentPhi)
+        
+        if errorData == []:
+            errorData = errorInCurrentPhi
+        else:
+            errorData = np.concatenate((errorData,errorInCurrentPhi),axis=0)
+    
+    
+    
+    return errorData
+
 
         
 
