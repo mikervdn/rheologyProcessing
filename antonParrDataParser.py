@@ -268,7 +268,34 @@ def prepDataPackager(topDir,errorCornstarchMass,errorSolventMass,errorSolventRho
     return errorData
 
 
+def convertNicolesData(topDir):
+    
+    
+    listOfSubDirs = next(os.walk(topDir))[1]
+    
+    for packingFraction in listOfSubDirs:
         
-
+        
+        
+        onlyfiles = [f for f in os.listdir(os.path.join(topDir,packingFraction)) if os.path.isfile(os.path.join(os.path.join(topDir,packingFraction), f))]
+        
+        nicolesData = np.loadtxt(os.path.join(topDir,packingFraction,onlyfiles[0]))
+        
+        (numRows,_) = np.shape(nicolesData)
+        
+        averagedData = np.zeros((numRows,6))
+        errorData = np.zeros((numRows,6))
+        
+        averagedData[:,2] = nicolesData[:,2]
+        averagedData[:,3] = nicolesData[:,1]
+        averagedData[:,4] = nicolesData[:,0]
+        errorData[:,2] = nicolesData[:,3]
+        
+        
+        np.save(os.path.join(topDir,packingFraction,"averagedData"),averagedData)
+        np.save(os.path.join(topDir,packingFraction,"errorsData"),errorData)
+        
+        
+        
     
             
